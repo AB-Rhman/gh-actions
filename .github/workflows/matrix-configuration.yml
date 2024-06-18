@@ -7,9 +7,17 @@ on:
 jobs:
     deploy:
         strategy:
+            fail-fast: false  # It keeps workfolw running even if some jobs fail
+            max-parallel: 2 # How many jobs can run together >> So here it is two :(
             matrix:
                 os: [ubuntu-latest, ubuntu-20.04]
                 images: [hello-world, alpine]
+                exclude: # To delete some configuration from the matrix
+                    - images: alpine
+                      os: ubuntu-20.04
+                include: # To add some configuration to the matrix
+                    - images: amd64/alpine
+                      os: ubuntu-20.04
         runs-on: ${{matrix.os}}
         steps:
             - name: Echo Docker Details
