@@ -13,6 +13,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Create kubeconfig directory
+      run: mkdir -p $HOME/.kube
+
     - name: Set up Kubeconfig
       run: echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
 
