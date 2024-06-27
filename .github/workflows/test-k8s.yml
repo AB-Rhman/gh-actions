@@ -13,16 +13,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Create kubeconfig directory
-      run: mkdir -p $HOME/.kube
-
-    - name: Add controlplane entry to hosts file
-      run: echo "192.24.175.3 controlplane" | sudo tee -a /etc/hosts
-
     - name: Install kubectl CLI
       uses: azure/setup-kubectl@v3
       with:
-        version: 'v1.30.0'
+        version: 'v1.29.0'
 
     - name: Set Kubeconfig file
       uses: azure/k8s-set-context@v4
@@ -36,4 +30,3 @@ jobs:
         echo --------------------------------------------------------
         kubectl get nodes
 
-        
