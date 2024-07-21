@@ -43,6 +43,4 @@ jobs:
       - name: Verify pod creation
         run: kubectl get pods
       
-      - name: Cleanup test deployment
-        run: kubectl delete deployment test-deployment
       
