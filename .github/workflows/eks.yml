@@ -1,0 +1,48 @@
+name: EKS TEST Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  connect-to-eks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install kubectl CLI
+        uses: azure/setup-kubectl@v3
+        with:
+            version: 'v1.30.0'
+
+      - name: Install AWS cli
+        id: install-aws-cli
+        uses: unfor19/install-aws-cli-action@master
+        with:
+            version: '2.17.13'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: us-east-1
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region us-east-1 --name demo-eks
+
+      - name: List Nodes in EKS Cluster
+        run: kubectl get nodes
+
+    
+      - name: Deploy test application
+        run: kubectl apply -f deployment.yaml
+
+      - name: Verify pod creation
+        run: kubectl get pods
+      
+      - name: Cleanup test deployment
+        run: kubectl delete deployment test-deployment
+      
