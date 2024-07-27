@@ -1,0 +1,130 @@
+name: Get EKS UP
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Install kubectl CLI
+          uses: azure/setup-kubectl@v3
+          with:
+              version: 'v1.30.0'
+
+        - name: Install Terraform
+          run: |
+            terraform_version=$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform | jq -r -M '.current_version')
+            curl -O "https://releases.hashicorp.com/terraform/${terraform_version}/terraform_${terraform_version}_linux_amd64.zip"
+            unzip terraform_${terraform_version}_linux_amd64.zip
+            mkdir -p ~/bin
+            mv terraform ~/bin/
+            terraform version
+
+        - name: Install AWS cli
+          id: install-aws-cli
+          uses: unfor19/install-aws-cli-action@master
+          with:
+            version: '2.17.13'
+
+        - name: Configure AWS credentials
+          uses: aws-actions/configure-aws-credentials@v1
+          with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: us-east-1
+
+        - name: Clone CKA Repo To get Terrafrom Files
+          run: |
+            git clone https://github.com/kodekloudhub/certified-kubernetes-administrator-course.git
+            cd certified-kubernetes-administrator-course/managed-clusters/eks/terraform
+
+        - name: Check if it change the directory or not :)
+          run: |
+            pwd
+
+        - name: Provision the infrastructure
+          run: |
+            terraform init
+            terraform plan
+            terraform apply -auto-approve
+
+        - name: Create a KUBECONFIG
+          run: |
+            aws eks update-kubeconfig --region us-east-1 --name demo-eks
+
+        - name: Capture Terraform Output
+          id: output
+          run: |
+            echo "Retrieving NodeInstanceRole..."
+            NodeInstanceRole=$(terraform output -raw NodeInstanceRole)
+            echo "NodeInstanceRole=$NodeInstanceRole" >> $GITHUB_ENV
+
+        - name: Download the node authentication ConfigMap
+          run: |
+            curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/aws-auth-cm.yaml
+
+        - name: Replace Part of the File
+          run: |
+             sed -i "s|<ARN of instance role (not instance profile)>|${{ env.NodeInstanceRole }}|g"  aws-auth-cm.yaml
+
+        - name: Check ConfigMap file
+          run: |
+            cat aws-auth-cm.yaml
+
+        - name: Apply the edited ConfigMap to join the nodes
+          run: |
+            kubectl apply -f aws-auth-cm.yaml
+
+        - name: Check node status
+          run: |
+            sleep 120
+            kubectl get nodes -o wide
+
+  Install-Ingress:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Install kubectl CLI
+          uses: azure/setup-kubectl@v3
+          with:
+            version: 'v1.30.0'
+
+        - name: Install AWS cli
+          id: install-aws-cli
+          uses: unfor19/install-aws-cli-action@master
+          with:
+            version: '2.17.13'
+
+        - name: Configure AWS credentials
+          uses: aws-actions/configure-aws-credentials@v1
+          with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: us-east-1
+
+        - name: Create a KUBECONFIG
+          run: |
+            aws eks update-kubeconfig --region us-east-1 --name demo-eks
+
+        - name: Install NLB
+          run: |
+            kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.1/deploy/static/provider/aws/deploy.yaml
+
+        - name: Wait 15 seconds
+          run: |
+            sleep 15
+
+        - name: Get EXTERNAL-IP
+          run: |
+            EXTERNAL_IP=$(kubectl get service ingress-nginx-controller --namespace=ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
+          
