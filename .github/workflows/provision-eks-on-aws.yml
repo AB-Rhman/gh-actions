@@ -41,13 +41,14 @@ jobs:
         - name: Clone CKA Repo To get Terrafrom Files
           run: |
             git clone https://github.com/kodekloudhub/certified-kubernetes-administrator-course.git
-            cd certified-kubernetes-administrator-course/managed-clusters/eks/terraform
 
         - name: Check if it change the directory or not :)
+          working-directory: certified-kubernetes-administrator-course/managed-clusters/eks/terraform
           run: |
             pwd
 
         - name: Provision the infrastructure
+          working-directory: certified-kubernetes-administrator-course/managed-clusters/eks/terraform
           run: |
             terraform init
             terraform plan
@@ -58,6 +59,7 @@ jobs:
             aws eks update-kubeconfig --region us-east-1 --name demo-eks
 
         - name: Capture Terraform Output
+          working-directory: certified-kubernetes-administrator-course/managed-clusters/eks/terraform
           id: output
           run: |
             echo "Retrieving NodeInstanceRole..."
@@ -65,18 +67,22 @@ jobs:
             echo "NodeInstanceRole=$NodeInstanceRole" >> $GITHUB_ENV
 
         - name: Download the node authentication ConfigMap
+          working-directory: certified-kubernetes-administrator-course/managed-clusters/eks/terraform
           run: |
             curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/aws-auth-cm.yaml
 
         - name: Replace Part of the File
+          working-directory: certified-kubernetes-administrator-course/managed-clusters/eks/terraform
           run: |
              sed -i "s|<ARN of instance role (not instance profile)>|${{ env.NodeInstanceRole }}|g"  aws-auth-cm.yaml
 
         - name: Check ConfigMap file
+          working-directory: certified-kubernetes-administrator-course/managed-clusters/eks/terraform
           run: |
             cat aws-auth-cm.yaml
 
         - name: Apply the edited ConfigMap to join the nodes
+          working-directory: certified-kubernetes-administrator-course/managed-clusters/eks/terraform
           run: |
             kubectl apply -f aws-auth-cm.yaml
 
