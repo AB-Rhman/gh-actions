@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: flask-app
-          image: abrhman/flaskapp:beta
+          image: abrhman/flask-batot:latest
           ports:
             - containerPort: 5000
           resources:
