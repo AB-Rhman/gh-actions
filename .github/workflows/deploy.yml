@@ -1,0 +1,60 @@
+name: Test Deploy to EKS
+
+on: 
+  workflow_dispatch:
+
+permissions: 
+  contents: read
+
+jobs:
+
+  Deploy-To-EKS:
+    runs-on: ubuntu-latest
+
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Install kubectl CLI
+          uses: azure/setup-kubectl@v3
+          with:
+            version: 'v1.30.0'
+
+        - name: Install AWS cli
+          id: install-aws-cli
+          uses: unfor19/install-aws-cli-action@master
+          with:
+            version: '2.17.13'
+
+        - name: Configure AWS credentials
+          uses: aws-actions/configure-aws-credentials@v1
+          with:
+            aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            aws-region: us-east-1
+
+        - name: Create a KUBECONFIG
+          run: |
+            aws eks update-kubeconfig --region us-east-1 --name demo-eks
+
+        - name: Get Ingress IP
+          run: |
+            EXTERNAL_IP=$(kubectl get service ingress-nginx-controller --namespace=ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
+
+        - name: Replace Token in Manifest file
+          uses: cschleiden/replace-tokens@v1
+          with:
+            tokenPrefix: '_{_'
+            tokenSuffix: '_}_'
+            files: '["test-k8s.yml"]'
+          env:
+            EXTERNAL_IP:  ${{ env.EXTERNAL_IP }}
+
+        - name: Deploy to Dev Env
+          run: |
+            kubectl apply -f test-k8s.yml
+
+
+        
+          
