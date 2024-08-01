@@ -51,6 +51,10 @@ jobs:
           env:
             EXTERNAL_IP:  ${{ env.EXTERNAL_IP }}
 
+        - name: Check the Manifest file content
+          run: |
+            cat test-k8s.yml
+
         - name: Deploy to Dev Env
           run: |
             kubectl apply -f test-k8s.yml
