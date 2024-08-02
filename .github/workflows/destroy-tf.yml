@@ -17,9 +17,21 @@ jobs:
             cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
         - name: Terraform Init
+          working-directory: terraform
           run: terraform init
 
         - name: Terraform Apply
+          working-directory: terraform
           run: terraform destroy -auto-approve
+
+        - name: Infrastructure Down
+          uses: rjstone/discord-webhook-notify@v1.0.4
+          with:
+            severity: warn
+            color: '#FF3000'
+            details: "##  > - **Infrastructure is DOWN :( **"
+            
+            footer:  "$$$$$"
+            webhookUrl: ${{ secrets.DISCORD_WEBHOOK_URL }}
 
         
